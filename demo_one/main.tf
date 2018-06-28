@@ -2,7 +2,7 @@ data "aws_vpc" "default" {
   default = true
 }
 
-data "aws_subnet_ids" "all" {
+data "aws_subnet_ids" "default" {
   vpc_id = "${data.aws_vpc.default.id}"
 }
 
@@ -38,6 +38,6 @@ module "frontend" {
   subnet_ids         = ["${data.aws_subnet_ids.default.ids}"]
   vpc_id             = "${data.aws_vpc.default.id}"
   ami_id             = "${data.aws_ami.ubuntu.id}"
-
-  user_data = "${file("${path.module}/cloud_init.init")}"
+  name               = "frontend_stack"
+  user_data          = "${file("${path.module}/cloud_init.init")}"
 }

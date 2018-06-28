@@ -1,51 +1,7 @@
-variable "availability_zones" {
-  description = "description"
-  type        = "list"
-}
-
-variable "region" {
-  description = "description"
-  default     = "description"
-}
-
-variable "vpc_id" {
-  description = "description"
-  default     = "description"
-}
-
-variable "subnet_ids" {
-  description = "description"
-  type        = "list"
-}
-
-variable "ami_id" {
-  description = ""
-}
-
-variable "tags" {
-  description = ""
-  type        = "map"
-  default     = {}
-}
-
-variable "name" {
-  description = ""
-}
-
-variable "user_data" {
-  description = ""
-  default     = "#"
-}
-
-variable "instance_type" {
-  description = ""
-  default     = "t2.micro"
-}
-
 resource "aws_elb" "this" {
   name               = "${var.name}"
-  security_groups    = ["${var.security_group_ids}"]
-  availability_zones = ["${var.aws_availability_zones}"]
+  security_groups    = ["${aws_security_group.this_elb.id}"]
+  availability_zones = ["${var.availability_zones}"]
 }
 
 resource "aws_launch_template" "this" {
@@ -65,7 +21,7 @@ resource "aws_launch_template" "this" {
 }
 
 resource "aws_autoscaling_group" "this" {
-  availability_zones = ["${var.aws_availability_zones}"]
+  availability_zones = ["${var.availability_zones}"]
   desired_capacity   = 1
   max_size           = 1
   min_size           = 1
