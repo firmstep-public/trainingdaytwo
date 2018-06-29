@@ -38,6 +38,25 @@ module "frontend" {
   subnet_ids         = ["${data.aws_subnet_ids.default.ids}"]
   vpc_id             = "${data.aws_vpc.default.id}"
   ami_id             = "${data.aws_ami.ubuntu.id}"
-  name               = "frontend_stack"
+  name               = "frontend"
   user_data          = "${file("${path.module}/cloud_init.init")}"
+
+  tags = {
+    Name            = "frontend"
+    Stage           = "Dev"
+    Owner           = "Jamie"
+    Favorite_animal = "Snake"
+  }
+}
+
+output "security_group_id" {
+  value = "${module.frontend.security_group_id}"
+}
+
+output "elb_security_group_id" {
+  value = "${module.frontend.elb_security_group_id}"
+}
+
+output "lb_dns_name" {
+  value = "${module.frontend.lb_dns_name}"
 }

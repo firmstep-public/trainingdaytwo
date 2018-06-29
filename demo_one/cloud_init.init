@@ -1,14 +1,18 @@
 #cloud-config
-apt_update: true
+#Requires modification
+#cloud-init to setup a LEMP stack
+#more details at www.opentechshed.com/lemp-stack-using-cloud-init
+package_upgrade: true
+
 packages:
   - nginx
   - php7.0-fpm
   - php-mysql
-  - mysql-server
   - php7.0-mcrypt
   - php7.0-gd
   - php7.0-curl
-  - php7.0-xml
+  - git
+
 write_files:
   - path: /etc/nginx/sites-available/default
     content: |
@@ -38,15 +42,24 @@ write_files:
             include fastcgi.conf;
         }
       }
-  - path: /var/www/html/info.php
+
+  - path: /var/www/html/index.php
     content: |
       <?php
       phpinfo();
       ?>
+
 runcmd:
-  - mkdir -p /var/www/html
-  - cp /usr/share/nginx/html/index.html /var/www/html/
-  - sed -i -e "s/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/" /etc/php/7.0/fpm/php.ini
-  # Ensure backwards compatible with 14.04
-  - file=/etc/nginx/fastcgi.conf; if [ ! -f "$file" ]; then ln -s /etc/nginx/fastcgi_params "$file"; fi
-  - service nginx restart
+  - export HNAME=$(hostname -f)
+  - export MDBPASS=`dd if=/dev/urandom bs=1 count=12 2>/dev/null | base64 -w 0 | rev | cut -b 2- | rev`
+  - export DEBIAN_FRONTEND=noninteractive
+  - echo "mariadb-server-10.0 mysql-server/root_password password $MDBPASS" | debconf-set-selections
+  - echo "mariadb-server-10.0 mysql-server/root_password_again password $MDBPASS" | debconf-set-selections
+  - sudo apt-get -y install software-properties-common
+  - sudo apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8
+  - sudo add-apt-repository 'deb [arch=amd64,i386,ppc64el] http://nyc2.mirrors.digitalocean.com/mariadb/repo/10.3/ubuntu xenial main'
+  - sudo apt update
+  - sudo apt -y install mariadb-server
+  - sed -i 's/server_name localhost;/server_name '$HOSTNAME';/' /etc/nginx/sites-available/default
+  - systemctl restart nginx
+  - echo "$MDBPASS" >> /root/mysql.txt

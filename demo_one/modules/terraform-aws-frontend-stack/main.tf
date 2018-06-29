@@ -1,13 +1,50 @@
-resource "aws_elb" "this" {
-  name               = "${var.name}"
+resource "aws_lb" "this" {
+  name_prefix        = "${substr(var.name, 0 , 6)}"
+  internal           = false
+  load_balancer_type = "application"
   security_groups    = ["${aws_security_group.this_elb.id}"]
-  availability_zones = ["${var.availability_zones}"]
+  subnets            = ["${var.subnet_ids}"]
+
+  enable_deletion_protection = false
+
+  #   access_logs {
+  #     bucket  = "${aws_s3_bucket.lb_logs.bucket}"
+  #     prefix  = "test-lb"
+  #     enabled = true
+  #   }
+
+  tags = "${var.tags}"
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_lb_target_group" "this" {
+  name_prefix = "${substr(var.name, 0 , 6)}"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = "${var.vpc_id}"
+  tags        = "${var.tags}"
+}
+
+resource "aws_lb_listener" "this" {
+  load_balancer_arn = "${aws_lb.this.arn}"
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    target_group_arn = "${aws_lb_target_group.this.arn}"
+    type             = "forward"
+  }
 }
 
 resource "aws_launch_template" "this" {
-  name_prefix   = "${var.name}"
-  image_id      = "${var.ami_id}"
-  instance_type = "${var.instance_type}"
+  name_prefix            = "${var.name}"
+  image_id               = "${var.ami_id}"
+  instance_type          = "${var.instance_type}"
+  vpc_security_group_ids = ["${aws_security_group.this.id}"]
+  tags                   = "${var.tags}"
+  user_data              = "${base64encode(var.user_data)}"
 
   instance_market_options {
     market_type = "spot"
@@ -17,7 +54,10 @@ resource "aws_launch_template" "this" {
     enabled = true
   }
 
-  vpc_security_group_ids = ["${aws_security_group.this.id}"]
+  tag_specifications {
+    resource_type = "instance"
+    tags          = "${var.tags}"
+  }
 }
 
 resource "aws_autoscaling_group" "this" {
@@ -25,6 +65,8 @@ resource "aws_autoscaling_group" "this" {
   desired_capacity   = 1
   max_size           = 1
   min_size           = 1
+
+  target_group_arns = ["${aws_lb_target_group.this.arn}"]
 
   launch_template = {
     id      = "${aws_launch_template.this.id}"
@@ -52,7 +94,7 @@ resource "aws_security_group_rule" "allow_access_out_elb" {
   to_port           = 0
   protocol          = "-1"
   cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = "${aws_security_group.this.id}"
+  security_group_id = "${aws_security_group.this_elb.id}"
 }
 
 resource "aws_security_group_rule" "allow_access_out_instance" {
@@ -69,7 +111,7 @@ resource "aws_security_group_rule" "allow_http_instance" {
   from_port                = 80
   to_port                  = 80
   protocol                 = "tcp"
-  source_security_group_id = ["${aws_security_group.this_elb.id}"]
+  source_security_group_id = "${aws_security_group.this_elb.id}"
   security_group_id        = "${aws_security_group.this.id}"
 }
 
@@ -89,8 +131,4 @@ resource "aws_security_group_rule" "allow_http_elb" {
   protocol          = "tcp"
   cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = "${aws_security_group.this_elb.id}"
-}
-
-output "security_group_id" {
-  value = "${aws_security_group.this.id}"
 }
