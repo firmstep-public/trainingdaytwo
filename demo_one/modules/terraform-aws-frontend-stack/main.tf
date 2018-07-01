@@ -45,6 +45,7 @@ resource "aws_launch_template" "this" {
   vpc_security_group_ids = ["${aws_security_group.this.id}"]
   tags                   = "${var.tags}"
   user_data              = "${base64encode(var.user_data)}"
+  key_name               = "${module.ssh_key_pair.key_name}"
 
   instance_market_options {
     market_type = "spot"
@@ -131,4 +132,16 @@ resource "aws_security_group_rule" "allow_http_elb" {
   protocol          = "tcp"
   cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = "${aws_security_group.this_elb.id}"
+}
+
+module "ssh_key_pair" {
+  source                = "git::https://github.com/cloudposse/terraform-aws-key-pair.git?ref=master"
+  namespace             = "cp"
+  stage                 = "prod"
+  name                  = "${var.name}"
+  ssh_public_key_path   = "${path.module}/secrets"
+  generate_ssh_key      = "true"
+  private_key_extension = ".pem"
+  public_key_extension  = ".pub"
+  chmod_command         = "chmod 600 %v"
 }

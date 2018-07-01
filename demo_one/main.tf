@@ -14,12 +14,12 @@ provider "aws" {
 
 data "aws_availability_zones" "default" {}
 
-data "aws_ami" "ubuntu" {
+data "aws_ami" "drupal" {
   most_recent = true
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-*"]
+    values = ["drupal8_lemp7_g2-180531-amazonlinux-2018.03.0--jetware-*"]
   }
 
   filter {
@@ -27,7 +27,7 @@ data "aws_ami" "ubuntu" {
     values = ["hvm"]
   }
 
-  owners = ["099720109477"] # Canonical
+  owners = ["679593333241"] # Jetware
 }
 
 module "frontend" {
@@ -37,7 +37,7 @@ module "frontend" {
   availability_zones = ["${data.aws_availability_zones.default.names}"]
   subnet_ids         = ["${data.aws_subnet_ids.default.ids}"]
   vpc_id             = "${data.aws_vpc.default.id}"
-  ami_id             = "${data.aws_ami.ubuntu.id}"
+  ami_id             = "${data.aws_ami.drupal.id}"
   name               = "frontend"
   user_data          = "${file("${path.module}/cloud_init.init")}"
 
@@ -59,4 +59,8 @@ output "elb_security_group_id" {
 
 output "lb_dns_name" {
   value = "${module.frontend.lb_dns_name}"
+}
+
+output "website" {
+  value = "http://${module.frontend.lb_dns_name}"
 }

@@ -38,5 +38,5 @@ variable "user_data" {
 
 variable "instance_type" {
   description = ""
-  default     = "t2.micro"
+  default     = "t2.small"
 }
